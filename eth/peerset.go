@@ -131,6 +131,18 @@ func (ps *peerSet) waitSnapExtension(peer *eth.Peer) (*snap.Peer, error) {
 	return <-wait, nil
 }
 
+// peersList a list of peers
+func (ps *peerSet) peersList() []*ethPeer {
+	ps.lock.RLock()
+	defer ps.lock.RUnlock()
+
+	list := make([]*ethPeer, 0, len(ps.peers))
+	for _, p := range ps.peers {
+		list = append(list, p)
+	}
+	return list
+}
+
 // registerPeer injects a new `eth` peer into the working set, or returns an error
 // if the peer is already known.
 func (ps *peerSet) registerPeer(peer *eth.Peer, ext *snap.Peer) error {
