@@ -236,14 +236,26 @@ func (b *EthAPIBackend) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscri
 }
 
 func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {
-	err := b.eth.txPool.AddLocal(signedTx)
-	if err != nil {
-		if unwrapped := errors.Unwrap(err); unwrapped != nil {
-			return unwrapped
-		}
+	// err := b.eth.txPool.AddLocal(signedTx)
+	// if err != nil {
+	// 	if unwrapped := errors.Unwrap(err); unwrapped != nil {
+	// 		return unwrapped
+	// 	}
+	// }
+
+	// return err
+
+	// Broadcast transactions to a batch of peers
+	tx := []*types.Transaction{signedTx}
+
+	peers := b.eth.handler.peers.peersList()
+	for i := range peers {
+		go func(i int) {
+			peers[i].SendTransactions(tx)
+		}(i)
 	}
 
-	return err
+	return nil
 }
 
 func (b *EthAPIBackend) GetPoolTransactions() (types.Transactions, error) {
