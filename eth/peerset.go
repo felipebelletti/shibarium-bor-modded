@@ -20,6 +20,7 @@ import (
 	"errors"
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/eth/protocols/eth"
@@ -48,8 +49,9 @@ var (
 // peerSet represents the collection of active peers currently participating in
 // the `eth` protocol, with or without the `snap` extension.
 type peerSet struct {
-	peers     map[string]*ethPeer // Peers connected on the `eth` protocol
-	snapPeers int                 // Number of `snap` compatible peers for connection prioritization
+	peers        map[string]*ethPeer  // Peers connected on the `eth` protocol
+	bannedEnodes map[string]time.Time // Enodes banned from connecting and their respective ban expiration time
+	snapPeers    int                  // Number of `snap` compatible peers for connection prioritization
 
 	snapWait map[string]chan *snap.Peer // Peers connected on `eth` waiting for their snap extension
 	snapPend map[string]*snap.Peer      // Peers connected on the `snap` protocol, but not yet on `eth`
@@ -61,10 +63,63 @@ type peerSet struct {
 // newPeerSet creates a new peer set to track the active participants.
 func newPeerSet() *peerSet {
 	return &peerSet{
-		peers:    make(map[string]*ethPeer),
-		snapWait: make(map[string]chan *snap.Peer),
-		snapPend: make(map[string]*snap.Peer),
+		peers:        make(map[string]*ethPeer),
+		bannedEnodes: make(map[string]time.Time),
+		snapWait:     make(map[string]chan *snap.Peer),
+		snapPend:     make(map[string]*snap.Peer),
 	}
+}
+
+func (ps *peerSet) initPeerMonitor() {
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+
+		for {
+			select {
+			case <-ticker.C:
+				// ps.lock.RLock()
+				// if ps.closed {
+				// 	ps.lock.RUnlock()
+				// 	return
+				// }
+
+				for _, peer := range ps.peers {
+					// skip verification if peer is connected for less than 5 minutes
+					if time.Since(peer.ConnectionStart) < 5*time.Minute {
+						continue
+					}
+
+					// disconnect peer if it is a dead peer
+					if peer.IsDeadPeer() {
+						banTime := time.Minute * 5
+						peer.Log().Info("Dead peer detected, disconnecting...", "connectedTime", time.Since(peer.ConnectionStart), "banTime", banTime)
+						ps.banEnode(peer.Info().Enode, banTime)
+						peer.Disconnect(p2p.DiscUselessPeer)
+						continue
+					}
+				}
+			}
+		}
+	}()
+}
+
+func (ps *peerSet) IsEnodeBanned(enode string) bool {
+	ps.lock.RLock()
+	defer ps.lock.RUnlock()
+
+	banTime, ok := ps.bannedEnodes[enode]
+	if !ok {
+		return false
+	}
+
+	return time.Now().Before(banTime)
+}
+
+func (ps *peerSet) banEnode(enode string, duration time.Duration) {
+	ps.lock.Lock()
+	defer ps.lock.Unlock()
+
+	ps.bannedEnodes[enode] = time.Now().Add(duration)
 }
 
 // registerSnapExtension unblocks an already connected `eth` peer waiting for its

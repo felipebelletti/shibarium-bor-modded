@@ -140,6 +140,8 @@ func newHandler(config *handlerConfig) (*handler, error) {
 	if config.EventMux == nil {
 		config.EventMux = new(event.TypeMux) // Nicety initialization for tests
 	}
+	peerSet := newPeerSet()
+	peerSet.initPeerMonitor()
 	h := &handler{
 		networkID:          config.Network,
 		forkFilter:         forkid.NewFilter(config.Chain),
@@ -147,7 +149,7 @@ func newHandler(config *handlerConfig) (*handler, error) {
 		database:           config.Database,
 		txpool:             config.TxPool,
 		chain:              config.Chain,
-		peers:              newPeerSet(),
+		peers:              peerSet,
 		merger:             config.Merger,
 		ethAPI:             config.EthAPI,
 		peerRequiredBlocks: config.PeerRequiredBlocks,
@@ -343,23 +345,35 @@ func (h *handler) runEthPeer(peer *eth.Peer, handler eth.Handler) error {
 		peer.Log().Debug("Ethereum handshake failed", "err", err)
 		return err
 	}
-	reject := false // reserved peer slots
-	if atomic.LoadUint32(&h.snapSync) == 1 {
-		if snap == nil {
-			// If we are running snap-sync, we want to reserve roughly half the peer
-			// slots for peers supporting the snap protocol.
-			// The logic here is; we only allow up to 5 more non-snap peers than snap-peers.
-			if all, snp := h.peers.len(), h.peers.snapLen(); all-snp > snp+5 {
-				reject = true
-			}
-		}
-	}
+	// reject := false // reserved peer slots
+	// if atomic.LoadUint32(&h.snapSync) == 1 {
+	// 	if snap == nil {
+	// 		// If we are running snap-sync, we want to reserve roughly half the peer
+	// 		// slots for peers supporting the snap protocol.
+	// 		// The logic here is; we only allow up to 5 more non-snap peers than snap-peers.
+	// 		if all, snp := h.peers.len(), h.peers.snapLen(); all-snp > snp+5 {
+	// 			reject = true
+	// 		}
+	// 	}
+	// }
 	// Ignore maxPeers if this is a trusted peer
 	if !peer.Peer.Info().Network.Trusted {
-		if reject || h.peers.len() >= h.maxPeers {
+		if /*reject || */ h.peers.len() >= h.maxPeers {
 			return p2p.DiscTooManyPeers
 		}
 	}
+
+	// if the peer's TD is 1, reject connection
+	if _, td := peer.Head(); td.Cmp(big.NewInt(1)) == 0 {
+		peer.Log().Debug("Ethereum peer TD is 1, disconnecting")
+		return p2p.DiscUselessPeer
+	}
+
+	if h.peers.IsEnodeBanned(peer.Info().Enode) {
+		peer.Log().Debug("Ethereum peer is banned, disconnecting")
+		return p2p.DiscUselessPeer
+	}
+
 	peer.Log().Debug("Ethereum peer connected", "name", peer.Name())
 
 	// Register the peer locally

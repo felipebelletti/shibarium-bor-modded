@@ -61,19 +61,24 @@ func (h *ethHandler) Handle(peer *eth.Peer, packet eth.Packet) error {
 	// Consume any broadcasts and announces, forwarding the rest to the downloader
 	switch packet := packet.(type) {
 	case *eth.NewBlockHashesPacket:
+		peer.NewBlockHashesPacket += 1
 		hashes, numbers := packet.Unpack()
 		return h.handleBlockAnnounces(peer, hashes, numbers)
 
 	case *eth.NewBlockPacket:
+		peer.NewBlockPacket += 1
 		return h.handleBlockBroadcast(peer, packet.Block, packet.TD)
 
 	case *eth.NewPooledTransactionHashesPacket:
+		peer.NewPooledTransactionHashesPacket += 1
 		return h.txFetcher.Notify(peer.ID(), *packet)
 
 	case *eth.TransactionsPacket:
+		peer.TransactionsPacket += 1
 		return h.txFetcher.Enqueue(peer.ID(), *packet, false)
 
 	case *eth.PooledTransactionsPacket:
+		peer.PooledTransactionsPacket += 1
 		return h.txFetcher.Enqueue(peer.ID(), *packet, true)
 
 	default:

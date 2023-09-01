@@ -117,6 +117,14 @@ type Peer struct {
 	// events receives message send / receive events if set
 	events   *event.Feed
 	testPipe *MsgPipeRW // for testing
+
+	ConnectionStart time.Time
+	// FirstNewBlockPacket              uint
+	NewBlockHashesPacket             uint
+	NewBlockPacket                   uint
+	NewPooledTransactionHashesPacket uint
+	TransactionsPacket               uint
+	PooledTransactionsPacket         uint
 }
 
 // NewPeer returns a peer for testing purposes.
@@ -213,6 +221,11 @@ func (p *Peer) Disconnect(reason DiscReason) {
 	}
 }
 
+// isDeadPeer returns true if the peer is not sending any packets
+func (p *Peer) IsDeadPeer() bool {
+	return p.NewBlockHashesPacket == 0 && p.NewBlockPacket == 0 && p.NewPooledTransactionHashesPacket == 0 && p.TransactionsPacket == 0 && p.PooledTransactionsPacket == 0
+}
+
 // String implements fmt.Stringer.
 func (p *Peer) String() string {
 	id := p.ID()
@@ -227,13 +240,20 @@ func (p *Peer) Inbound() bool {
 func newPeer(log log.Logger, conn *conn, protocols []Protocol) *Peer {
 	protomap := matchProtocols(protocols, conn.caps, conn)
 	p := &Peer{
-		rw:       conn,
-		running:  protomap,
-		created:  mclock.Now(),
-		disc:     make(chan DiscReason),
-		protoErr: make(chan error, len(protomap)+1), // protocols + pingLoop
-		closed:   make(chan struct{}),
-		log:      log.New("id", conn.node.ID(), "conn", conn.flags),
+		rw:                   conn,
+		running:              protomap,
+		created:              mclock.Now(),
+		disc:                 make(chan DiscReason),
+		protoErr:             make(chan error, len(protomap)+1), // protocols + pingLoop
+		closed:               make(chan struct{}),
+		log:                  log.New("id", conn.node.ID(), "conn", conn.flags),
+		ConnectionStart:      time.Now(),
+		NewBlockHashesPacket: 0,
+		NewBlockPacket:       0,
+		// FirstNewBlockPacket:              0,
+		NewPooledTransactionHashesPacket: 0,
+		TransactionsPacket:               0,
+		PooledTransactionsPacket:         0,
 	}
 	return p
 }
