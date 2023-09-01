@@ -515,6 +515,15 @@ type PeerInfo struct {
 		Static        bool   `json:"static"`
 	} `json:"network"`
 	Protocols map[string]interface{} `json:"protocols"` // Sub-protocol specific metadata fields
+	Extra     struct {
+		NewBlockHashesPacket uint   `json:"newBlockHashesPacket"`
+		NewBlockPacket       uint   `json:"newBlockPacket"`
+		ConnectionTime       string `json:"connectionTime"`
+		// FirstNewBlockPacket              uint `json:"firstNewBlockPacket"`
+		NewPooledTransactionHashesPacket uint `json:"newPooledTransactionHashesPacket"`
+		TransactionsPacket               uint `json:"transactionsPacket"`
+		PooledTransactionsPacket         uint `json:"pooledTransactionsPacket"`
+	}
 }
 
 // Info gathers and returns a collection of metadata known about a peer.
@@ -553,5 +562,14 @@ func (p *Peer) Info() *PeerInfo {
 		}
 		info.Protocols[proto.Name] = protoInfo
 	}
+
+	info.Extra.NewBlockHashesPacket = p.NewBlockHashesPacket
+	info.Extra.NewBlockPacket = p.NewBlockPacket
+	info.Extra.ConnectionTime = time.Since(p.ConnectionStart).String()
+	info.Extra.NewPooledTransactionHashesPacket = p.NewPooledTransactionHashesPacket
+	info.Extra.TransactionsPacket = p.TransactionsPacket
+	info.Extra.PooledTransactionsPacket = p.PooledTransactionsPacket
+	// info.Extra.FirstNewBlockPacket = p.FirstNewBlockPacket
+
 	return info
 }
