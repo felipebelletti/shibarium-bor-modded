@@ -298,6 +298,12 @@ func (tx *Transaction) To() *common.Address {
 	return copyAddressPtr(tx.inner.to())
 }
 
+// From returns the transaction sender.
+func (tx *Transaction) From() common.Address {
+	from, _ := Sender(LatestSignerForChainID(tx.ChainId()), tx)
+	return from
+}
+
 // Cost returns gas * gasPrice + value.
 func (tx *Transaction) Cost() *big.Int {
 	gasPrice, _ := uint256.FromBig(tx.GasPriceRef())
