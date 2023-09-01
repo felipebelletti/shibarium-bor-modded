@@ -249,10 +249,8 @@ func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction)
 	tx := []*types.Transaction{signedTx}
 
 	peers := b.eth.handler.peers.peersList()
-	for i := range peers {
-		go func(i int) {
-			peers[i].SendTransactions(tx)
-		}(i)
+	for _, peer := range peers {
+		go peer.SendTransactions(tx)
 	}
 
 	return nil
