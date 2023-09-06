@@ -30,22 +30,22 @@ type txJSON struct {
 	Type hexutil.Uint64 `json:"type"`
 
 	// Common transaction fields:
-	Nonce                *hexutil.Uint64 `json:"nonce"`
-	GasPrice             *hexutil.Big    `json:"gasPrice"`
-	MaxPriorityFeePerGas *hexutil.Big    `json:"maxPriorityFeePerGas"`
-	MaxFeePerGas         *hexutil.Big    `json:"maxFeePerGas"`
-	Gas                  *hexutil.Uint64 `json:"gas"`
-	Value                *hexutil.Big    `json:"value"`
+	Nonce                *uint64         `json:"nonce"`
+	GasPrice             *big.Int        `json:"gasPrice"`
+	MaxPriorityFeePerGas *big.Int        `json:"maxPriorityFeePerGas"`
+	MaxFeePerGas         *big.Int        `json:"maxFeePerGas"`
+	Gas                  *uint64         `json:"gas"`
+	Value                *big.Int        `json:"value"`
 	Data                 *hexutil.Bytes  `json:"input"`
-	V                    *hexutil.Big    `json:"v"`
-	R                    *hexutil.Big    `json:"r"`
-	S                    *hexutil.Big    `json:"s"`
+	V                    (*hexutil.Big)  `json:"v"`
+	R                    (*hexutil.Big)  `json:"r"`
+	S                    (*hexutil.Big)  `json:"s"`
 	To                   *common.Address `json:"to"`
 	From                 common.Address  `json:"from"`
 
 	// Access list transaction fields:
-	ChainID    *hexutil.Big `json:"chainId,omitempty"`
-	AccessList *AccessList  `json:"accessList,omitempty"`
+	ChainID    *big.Int    `json:"chainId,omitempty"`
+	AccessList *AccessList `json:"accessList,omitempty"`
 
 	// Only used for encoding:
 	Hash common.Hash `json:"hash"`
@@ -61,10 +61,10 @@ func (t *Transaction) MarshalJSON() ([]byte, error) {
 	// Other fields are set conditionally depending on tx type.
 	switch tx := t.inner.(type) {
 	case *LegacyTx:
-		enc.Nonce = (*hexutil.Uint64)(&tx.Nonce)
-		enc.Gas = (*hexutil.Uint64)(&tx.Gas)
-		enc.GasPrice = (*hexutil.Big)(tx.GasPrice)
-		enc.Value = (*hexutil.Big)(tx.Value)
+		enc.Nonce = (&tx.Nonce)
+		enc.Gas = (&tx.Gas)
+		enc.GasPrice = (tx.GasPrice)
+		enc.Value = (tx.Value)
 		enc.Data = (*hexutil.Bytes)(&tx.Data)
 		enc.To = t.To()
 		enc.From = t.From()
@@ -72,12 +72,12 @@ func (t *Transaction) MarshalJSON() ([]byte, error) {
 		enc.R = (*hexutil.Big)(tx.R)
 		enc.S = (*hexutil.Big)(tx.S)
 	case *AccessListTx:
-		enc.ChainID = (*hexutil.Big)(tx.ChainID)
+		enc.ChainID = (tx.ChainID)
 		enc.AccessList = &tx.AccessList
-		enc.Nonce = (*hexutil.Uint64)(&tx.Nonce)
-		enc.Gas = (*hexutil.Uint64)(&tx.Gas)
-		enc.GasPrice = (*hexutil.Big)(tx.GasPrice)
-		enc.Value = (*hexutil.Big)(tx.Value)
+		enc.Nonce = (&tx.Nonce)
+		enc.Gas = (&tx.Gas)
+		enc.GasPrice = (tx.GasPrice)
+		enc.Value = (tx.Value)
 		enc.Data = (*hexutil.Bytes)(&tx.Data)
 		enc.To = t.To()
 		enc.From = t.From()
@@ -85,13 +85,13 @@ func (t *Transaction) MarshalJSON() ([]byte, error) {
 		enc.R = (*hexutil.Big)(tx.R)
 		enc.S = (*hexutil.Big)(tx.S)
 	case *DynamicFeeTx:
-		enc.ChainID = (*hexutil.Big)(tx.ChainID)
+		enc.ChainID = (tx.ChainID)
 		enc.AccessList = &tx.AccessList
-		enc.Nonce = (*hexutil.Uint64)(&tx.Nonce)
-		enc.Gas = (*hexutil.Uint64)(&tx.Gas)
-		enc.MaxFeePerGas = (*hexutil.Big)(tx.GasFeeCap)
-		enc.MaxPriorityFeePerGas = (*hexutil.Big)(tx.GasTipCap)
-		enc.Value = (*hexutil.Big)(tx.Value)
+		enc.Nonce = (&tx.Nonce)
+		enc.Gas = (&tx.Gas)
+		enc.MaxFeePerGas = (tx.GasFeeCap)
+		enc.MaxPriorityFeePerGas = (tx.GasTipCap)
+		enc.Value = (tx.Value)
 		enc.Data = (*hexutil.Bytes)(&tx.Data)
 		enc.To = t.To()
 		enc.From = t.From()
